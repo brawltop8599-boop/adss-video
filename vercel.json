@@ -1,8 +1,12 @@
 {
   "routes": [
     {
-      "src": "/(.*)",
-      "dest": "https://stream-tv-digital.hf.space/$1"
+      "src": "/http/(.*)",
+      "dest": "https://stream-tv-digital.hf.space/http/$1"
+    },
+    {
+      "src": "/https/(.*)",
+      "dest": "https://stream-tv-digital.hf.space/https/$1"
     }
   ]
 }
