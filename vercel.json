@@ -1,8 +1,8 @@
 {
-  "routes": [
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "https://stream-tv-digital.hf.space/$1"
+      "source": "/*",
+      "destination": "/api/play"
     }
   ]
 }
