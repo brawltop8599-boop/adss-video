@@ -5,7 +5,8 @@ export default function handler(req, res) {
     return res.status(400).send('Bad request: missing url');
   }
 
-  const finalDest = `https://stream-tv-digital.hf.space/${targetUrl}`;
+  // Обязательно оставляем /proxy, так как бэкенд на спейсе ждет его
+  const finalDest = `https://stream-tv-digital.hf.space/proxy?url=${encodeURIComponent(targetUrl)}`;
 
   res.setHeader('Cache-Control', 'no-store');
   return res.redirect(302, finalDest);
