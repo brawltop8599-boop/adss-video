@@ -5,7 +5,9 @@ export default function handler(req, res) {
     return res.status(400).send('Bad request: missing url');
   }
 
-  // Мгновенный 302-редирект на ваш спейс (или конечный прокси), без нагрузки на Vercel
+  // Перенаправляем на ваш Hugging Face Space
+  const finalDest = `https://stream-tv-digital.hf.space/${targetUrl}`;
+
   res.setHeader('Cache-Control', 'no-store');
-  return res.redirect(302, targetUrl);
+  return res.redirect(302, finalDest);
 }
