@@ -1,6 +1,5 @@
 import crypto from 'crypto';
 
-// Секретный ключ (должен быть ровно 32 символа)
 const SECRET_KEY = process.env.SECRET_KEY || 'MySuperSecretKey2026_ChangeMe3222';
 const KEY = Buffer.from(SECRET_KEY);
 
