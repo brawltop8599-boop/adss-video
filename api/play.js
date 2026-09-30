@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-export default async function handler(req, res) {
+export default function handler(req, res) {
   const { data } = req.query;
 
   if (!data) {
@@ -8,11 +8,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Расшифровываем ссылку
+    // Получаем секретный ключ из переменных окружения Vercel
     const secretKey = process.env.SECRET_KEY || 'MySuperSecretKey2026_ChangeMe3222';
+    
+    // Приводим ключ к ровно 32 байтам
     const keyBuffer = Buffer.alloc(32);
     Buffer.from(secretKey).copy(keyBuffer);
 
+    // Восстанавливаем символы base64url обратно в стандартный base64
     let base64 = data.replace(/-/g, '+').replace(/_/g, '/');
     while (base64.length % 4) {
       base64 += '=';
@@ -23,34 +26,14 @@ export default async function handler(req, res) {
     const ct = iv_ct.slice(16);
     
     const decipher = crypto.createDecipheriv('aes-256-cbc', keyBuffer, iv);
-    let targetUrl = decipher.update(ct, 'binary', 'utf8');
-    targetUrl += decipher.final('utf8');
+    let decrypted = decipher.update(ct, 'binary', 'utf8');
+    decrypted += decipher.final('utf8');
 
-    // 2. Проксируем запрос к реальному источнику скрытно от клиента
-    const response = await fetch(targetUrl, {
-      headers: {
-        'User-Agent': req.headers['user-agent'] || 'Vercel-IPTV-Proxy'
-      }
-    });
-
-    if (!response.ok) {
-      return res.status(response.status).send('Stream error from source');
-    }
-
-    // Передаем заголовки и контент потока обратно плееру
-    res.setHeader('Content-Type', response.headers.get('content-type') || 'video/mp2t');
-    res.setHeader('Cache-Control', 'no-cache');
-
-    // Стримим данные клиенту
-    const reader = response.body.getReader();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      res.write(value);
-    }
-    res.end();
+    // Мгновенный 302 редирект на оригинальный поток (сервер не качает видео, трафик идет напрямую)
+    res.setHeader('Cache-Control', 'no-store');
+    return res.redirect(302, decrypted);
 
   } catch (e) {
-    return res.status(403).send('Access denied or proxy error');
+    return res.status(403).send('Access denied: Invalid token');
   }
 }
