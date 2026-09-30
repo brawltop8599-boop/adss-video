@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/video",
+      "destination": "/api/play"
+    }
+  ]
+}
