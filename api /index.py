@@ -18,43 +18,8 @@ DEVICE_ID = "C6E50B24774620673221A09FDF75789A8B76E581A06073166E126D0AE3F804E6"
 SIGNATURE = "8093B01764649C3D8B2024B9B8F72CB47BA2D7B1CCAE5988013AEE59020B5689"
 HW_VERSION_2 = "61c3ee11415738e10b26e47bd195df7e23f8b1a0"
 
-SECRET_KEY = "000"  
 TELEGRAM_GROUP_URL = "https://t.me/+2lWVU6CKQsVkMWRi"  
-STUB_VIDEO_URL = "https://raw.githubusercontent.com/Waswas777/video2/refs/heads/main/playlist.m3u8"
 PORTAL_DOMAIN = urlparse(PORTAL_BASE).netloc
-
-BANNED_IPS = {        
-        "2a00:1e98:f022:9877:c1ba:4b65:5e85:1c4f", "2a0d:6fc2:5db2:6600:b0b1:70c1:6721:ca58", "2a00:1e98:f2d5:e661:5a0f:182a:60ea:e4cd", 
-        "2a02:6ea0:3100:2000:490a:2928:d5eb:e685"    
-}
-BANNED_PREFIXES = (
-    "176.3.", "176.123.", "78.56.", "185.146.", "95.85.", "212.57.", "78.54.", "178.254.", "188.163.", "205.210.31."
-)
-
-def is_ip_banned(request: Request) -> bool:
-    client_ip = request.headers.get("cf-connecting-ip") or request.headers.get("x-forwarded-for")
-    if not client_ip and request.client:
-        client_ip = request.client.host    
-    if not client_ip:
-        return False        
-    client_ip = client_ip.split(",")[0].strip()
-    if client_ip in BANNED_IPS or client_ip.startswith(BANNED_PREFIXES):
-        return True        
-    return False
-
-def is_browser_request(request: Request) -> bool:
-    ua = request.headers.get("user-agent", "").lower()
-    if not ua:
-        return False
-    browser_keywords = ["mozilla", "chrome", "safari", "edge", "opera", "firefox", "androidwebkit"]
-    player_keywords = ["televizo", "iptv", "vlc", "kodi", "gst", "ffmpeg", "mag", "stb", "android"]    
-    for pk in player_keywords:
-        if pk in ua:
-            if "android" in ua and ("mobile" in ua or "wv" in ua or "chrome" in ua or "safari" in ua):
-                pass
-            else:
-                return False
-    return any(bk in ua for bk in browser_keywords)
 
 app = FastAPI()
 
@@ -129,7 +94,6 @@ def get_session(force_new=False):
     
     try:
         session.get(prof_url, timeout=10)
-        # Также дергаем account_info для полного соответствия цепочке на скриншоте
         acc_url = f"{PORTAL_URL}?type=account_info&action=get_main_info&JsHttpRequest=1-xml{token_param}"
         session.get(acc_url, timeout=10)
     except Exception:
@@ -238,21 +202,10 @@ def get_or_create_playlist():
 
 @app.get("/", response_class=RedirectResponse)
 def root_redirect(request: Request):
-    if is_ip_banned(request):
-        return RedirectResponse(url=STUB_VIDEO_URL, status_code=302)
     return RedirectResponse(url=TELEGRAM_GROUP_URL, status_code=302)
 
 @app.get("/playlist.json")
-def download_json(request: Request, key: str = ""):
-    if is_ip_banned(request):
-        return [{"name": "Reklama", "group": "Stub", "logo": "", "url": STUB_VIDEO_URL}]
-        
-    if is_browser_request(request):
-        return RedirectResponse(url=TELEGRAM_GROUP_URL, status_code=302)
-
-    if key != SECRET_KEY:
-        return [{"name": "Reklama", "group": "Stub", "logo": "", "url": STUB_VIDEO_URL}]
-
+def download_json(request: Request):
     base_url = str(request.base_url).rstrip('/')
     channels = get_or_create_playlist()
     
@@ -263,26 +216,14 @@ def download_json(request: Request, key: str = ""):
             "name": ch["name"],
             "group": ch.get("group", "Umumiy"),
             "logo": ch.get("logo", ""),
-            "url": f"{base_url}/play?cmd={cmd_encoded}&key={SECRET_KEY}"
+            "url": f"{base_url}/play?cmd={cmd_encoded}"
         })
     return result
 
 @app.get("/pl.m3u8", response_class=PlainTextResponse)
 @app.get("/playlist.m3u8", response_class=PlainTextResponse)
-def download_m3u8(request: Request, key: str = ""):
+def download_m3u8(request: Request):
     headers = {"Content-Disposition": "attachment; filename=playlist.m3u8"}    
-    
-    if is_ip_banned(request):
-        content = f"#EXTM3U\n#EXTINF:-1 tvg-name=\"Reklama\" group-title=\"Stub\",Reklama\n{STUB_VIDEO_URL}"
-        return PlainTextResponse(content, headers=headers)
-
-    if is_browser_request(request):
-        return RedirectResponse(url=TELEGRAM_GROUP_URL, status_code=302)
-
-    if key != SECRET_KEY:
-        content = f"#EXTM3U\n#EXTINF:-1 tvg-name=\"Reklama\" group-title=\"Stub\",Reklama\n{STUB_VIDEO_URL}"
-        return PlainTextResponse(content, headers=headers)
-
     base_url = str(request.base_url).rstrip('/')
     channels = get_or_create_playlist()
 
@@ -292,23 +233,14 @@ def download_m3u8(request: Request, key: str = ""):
         group = ch.get("group", "Umumiy")
         logo = ch.get("logo", "")
         cmd_encoded = quote(ch.get("cmd", ""), safe="")
-        stream_link = f"{base_url}/play?cmd={cmd_encoded}&key={SECRET_KEY}"        
+        stream_link = f"{base_url}/play?cmd={cmd_encoded}"        
         m3u_lines.append(f"#EXTINF:-1 tvg-name=\"{name}\" tvg-logo=\"{logo}\" group-title=\"{group}\",{name}")
         m3u_lines.append(stream_link)
 
     return PlainTextResponse("\n".join(m3u_lines), headers=headers)
 
 @app.get("/play")
-def play_stream(cmd: str, request: Request, key: str = ""):
-    if is_ip_banned(request):
-        return RedirectResponse(url=STUB_VIDEO_URL, status_code=302)
-
-    if is_browser_request(request):
-        return RedirectResponse(url=TELEGRAM_GROUP_URL, status_code=302)
-
-    if key != SECRET_KEY:
-        return RedirectResponse(url=STUB_VIDEO_URL, status_code=302)
-
+def play_stream(cmd: str, request: Request):
     session = get_session(force_new=True)
     stream_url = ""    
 
