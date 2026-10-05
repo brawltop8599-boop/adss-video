@@ -7,22 +7,16 @@ from urllib.parse import urlparse, quote, unquote
 from fastapi import FastAPI, Response, Request
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 import requests
-
 PORTAL_BASE = "http://91.215.188.161"
 PORTAL_URL = f"{PORTAL_BASE}/stalker_portal/server/load.php"
-
 MAC_BASE = "00:1A:79:39:80:9C"
 SN_BASE = "420428156A9E4"
-UID_BASE = "30DAC1D60ADB0CA2303756C2B420BA2C1D3614520B7CA5D2AA00241598AE9055"
+UID_BASE = "30DAC1D60AD80CA2303756C2B420BA2C1D3614520B7CA5D2AA00241598AE9055"
 DEVICE_ID = "C6E50B24774620673221A09FDF75789A8B76E581A06073166E126D0AE3F804E6"
-SIGNATURE = "8093B01764649C3D8B2024B9B8F72CB47BA2D7B1CCAE5988013AEE59020B5689"
-HW_VERSION_2 = "61c3ee11415738e10b26e47bd195df7e23f8b1a0"
-
-SECRET_KEY = "000"  
+SECRET_KEY = "000"
 TELEGRAM_GROUP_URL = "https://t.me/+2lWVU6CKQsVkMWRi"  
 STUB_VIDEO_URL = "https://raw.githubusercontent.com/Waswas777/video2/refs/heads/main/playlist.m3u8"
 PORTAL_DOMAIN = urlparse(PORTAL_BASE).netloc
-
 BANNED_IPS = {        
         "5.253.66.62", "23.106.253.18", "23.106.249.56", "31.3.156.64", "38.180.180.126", "46.150.71.146", "91.214.82.125", "109.86.19.135", "217.12.223.190", "188.233.60.20",
         "91.195.172.249", "149.102.240.138", "91.194.168.20", "91.195.172.241", "91.195.172.240", "88.218.92.126", "46.150.71.235", "194.44.26.199", "130.0.235.254",
@@ -45,7 +39,6 @@ BANNED_PREFIXES = (
     "2001:1e98:", "2001:9e8:", "2a0d:6fc0:", "2003:df:", "2409:40d1:", "144.31.141.", "213.180.", "65.49.", "34.212.", "110.172.", "217.194.", "193.169.", "35.87.",
     "176.3.", "176.123.", "78.56.", "185.146.", "95.85.", "212.57.", "78.54.", "178.254.", "188.163.", "205.210.31."
 )
-
 def is_ip_banned(request: Request) -> bool:
     client_ip = request.headers.get("cf-connecting-ip") or request.headers.get("x-forwarded-for")
     if not client_ip and request.client:
@@ -57,6 +50,7 @@ def is_ip_banned(request: Request) -> bool:
         return True        
     return False
 
+# Блокировка браузеров включена обратно
 def is_browser_request(request: Request) -> bool:
     ua = request.headers.get("user-agent", "").lower()
     if not ua:
@@ -72,6 +66,11 @@ def is_browser_request(request: Request) -> bool:
     return any(bk in ua for bk in browser_keywords)
 
 app = FastAPI()
+status_data = {
+    "last_update": "Hali yangilanmagan",
+    "total_channels": 0,
+    "status": "Ishga tushmoqda...",
+}
 
 global_session = None
 session_created_time = 0
@@ -82,7 +81,6 @@ def get_session(force_new=False):
     global global_session, session_created_time    
     if not force_new and global_session and (time.time() - session_created_time) < 300:
         return global_session        
-        
     session = requests.Session()
     headers = {
         "User-Agent": "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3",
@@ -104,7 +102,7 @@ def get_session(force_new=False):
         pass
 
     token = ""
-    random_val = "22ef3d9929d4689666c71115027b6559cb966b78"
+    random_val = "42013928bec8c82be1b0d20a86bfaeedc52e4e68"
     try:
         hs_url = f"{PORTAL_URL}?type=stb&action=handshake&token=&JsHttpRequest=1-xml"
         r = session.get(hs_url, timeout=10).json()
@@ -125,10 +123,7 @@ def get_session(force_new=False):
         "uid": UID_BASE,
         "random": random_val,
     })    
-    
     token_param = f"&token={token}" if token else ""
-    timestamp = int(time.time())
-    
     prof_url = (
         f"{PORTAL_URL}?type=stb&action=get_profile&JsHttpRequest=1-xml&hd=1"
         f"{token_param}"
@@ -136,17 +131,14 @@ def get_session(force_new=False):
         f"&num_banks=2&sn={SN_BASE}&stb_type=MAG250&client_type=STB&image_version=218&video_out=hdmi"
         f"&device_id={DEVICE_ID}"
         f"&device_id2={DEVICE_ID}"
-        f"&signature={SIGNATURE}"
+        "&signature=8093B01764649C3D8B202489B8F72CB47BA2D7B1CCAE5988013AEE59820B5689"
         "&auth_second_step=1&hw_version=1.7-BD-00&not_valid_token=0"
         f"&metrics={metrics_data}"
-        f"&hw_version_2={HW_VERSION_2}&timestamp={timestamp}&api_signature=262&prehash=015bbe819626803ef0fe6df45ad6fb000f759aa9"
+        f"&hw_version_2=61c3ee11415738e10b26e47bd195df7e23f8b1a0&timestamp={int(time.time())}&api_signature=262&prehash=501706164d318322b9196c8038c76d3233468725"
     )
     
     try:
         session.get(prof_url, timeout=10)
-        # Также дергаем account_info для полного соответствия цепочке на скриншоте
-        acc_url = f"{PORTAL_URL}?type=account_info&action=get_main_info&JsHttpRequest=1-xml{token_param}"
-        session.get(acc_url, timeout=10)
     except Exception:
         pass
 
@@ -163,7 +155,7 @@ def fetch_channels_data(session):
         if isinstance(g_data, list):
             for g in g_data:
                 gid = g.get("id")
-                gtitle = g.get("title", "Umumiy")
+                gtitle = g.get("title", "Boshqa")
                 if gid is not None:
                     genres_map[str(gid)] = gtitle
     except Exception:
@@ -175,8 +167,7 @@ def fetch_channels_data(session):
     try:
         channels_url = f"{PORTAL_URL}?type=itv&action=get_all_channels&JsHttpRequest=1-xml"
         channels_res = session.get(channels_url, timeout=10).json()
-        js_content = channels_res.get("js", {})
-        data = js_content.get("data", []) if isinstance(js_content, dict) else (js_content if isinstance(js_content, list) else [])
+        data = channels_res.get("js", {}).get("data", [])
         if isinstance(data, list):
             for ch in data:
                 cmd = ch.get("cmd", "")
@@ -305,10 +296,9 @@ def download_m3u8(request: Request, key: str = ""):
     for ch in channels:
         name = ch.get("name", "Kanal")
         group = ch.get("group", "Umumiy")
-        logo = ch.get("logo", "")
         cmd_encoded = quote(ch.get("cmd", ""), safe="")
         stream_link = f"{base_url}/play?cmd={cmd_encoded}&key={SECRET_KEY}"        
-        m3u_lines.append(f"#EXTINF:-1 tvg-name=\"{name}\" tvg-logo=\"{logo}\" group-title=\"{group}\",{name}")
+        m3u_lines.append(f"#EXTINF:-1 tvg-name=\"{name}\" group-title=\"{group}\",{name}")
         m3u_lines.append(stream_link)
 
     return PlainTextResponse("\n".join(m3u_lines), headers=headers)
