@@ -1,6 +1,12 @@
-FROM php:8.2-apache
-# Копируем всё содержимое в корень веб-сервера
-COPY . /var/www/html/
-# Гарантируем, что index.php находится на месте
-RUN ls -l /var/www/html/
-EXPOSE 80
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app.py .
+
+EXPOSE 7860
+
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "7860"]
