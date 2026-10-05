@@ -7,7 +7,6 @@ from urllib.parse import urlparse, quote, unquote
 from fastapi import FastAPI, Response, Request
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 import requests
-
 PORTAL_BASE = "http://91.215.188.161"
 PORTAL_URL = f"{PORTAL_BASE}/stalker_portal/server/load.php"
 
